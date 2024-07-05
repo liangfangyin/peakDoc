@@ -253,10 +253,4 @@ CQRS(Command Query Responsibility Segregation)是将Command(命令)与Query(查�
 
 [3种CQRS架构模式](https://link.juejin.cn?target=https%3A%2F%2Fblog.csdn.net%2Fitfly8%2Farticle%2Fdetails%2F109554848)
 
-作者：小飞哥小
 
-链接：[https://juejin.cn/post/7057360268535267364](https://juejin.cn/post/7057360268535267364)
-
-来源：稀土掘金
-
-著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。
