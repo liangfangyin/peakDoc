@@ -52,6 +52,7 @@ private void Window_MouseMove(object sender, MouseEventArgs e)
     <ResourceDictionary>
         <ResourceDictionary.MergedDictionaries>
             <ResourceDictionary Source="/Themes/MainWindowStyle.xaml"></ResourceDictionary>
+            <ResourceDictionary Source="pack://application:,,,/PeakUI.WPF;component/Themes/Themes.xaml"></ResourceDictionary>
         </ResourceDictionary.MergedDictionaries>
     </ResourceDictionary>  
 </Window.Resources>
@@ -167,6 +168,79 @@ Page1.xaml
 <Window.Background>
     <ImageBrush ImageSource="/Resources/Images/loginbg.jpg"></ImageBrush>
 </Window.Background>
+```
+
+
+
+## APP异常
+
+```c#
+
+    public partial class App : Application
+    {
+        public App()
+        {
+            AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
+            DispatcherUnhandledException += App_DispatcherUnhandledException;
+            TaskScheduler.UnobservedTaskException += TaskScheduler_UnobservedTaskException;  
+        }
+
+        protected override void OnStartup(StartupEventArgs e)
+        {
+            base.OnStartup(e);
+            Login indexView = new Login();
+            indexView.Show();
+        }
+         
+        private void App_DispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
+        {
+            PeakLog.ERROR(e.Exception.ToString(),nameof(App_DispatcherUnhandledException));
+            e.Handled = true;  
+        }
+
+        private void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
+        {
+            Exception ex = (Exception)e.ExceptionObject;
+            PeakLog.ERROR(ex.Message + ex.StackTrace, nameof(CurrentDomain_UnhandledException)); 
+        }
+
+        /// <summary>
+        /// Task线程内未捕获异常处理事件
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void TaskScheduler_UnobservedTaskException(object? sender, UnobservedTaskExceptionEventArgs ex)
+        {
+            PeakLog.ERROR(ex.Exception.Message + ex.Exception.StackTrace, nameof(TaskScheduler_UnobservedTaskException));
+            //设置该异常已察觉（这样处理后就不会引起程序崩溃）
+            ex.SetObserved();
+        }
+    }
+
+```
+
+
+
+## 依赖注入
+
+```c#
+public partial class App : Application
+{
+    public App()
+    {
+        Task.Run(() =>
+        {
+            var builder = new ConfigurationBuilder();
+            builder.AddJsonFile(path: "appsettings.json", optional: true, reloadOnChange: true);
+            ConfigurationUtil.Configuration = builder.Build();
+             
+            var serviceCollection = new ServiceCollection();
+            serviceCollection.AddDistributedMemoryCache();
+            serviceCollection.AddTransient<ISqlDbContext, SqlSugarDBClient>();
+            serviceCollection.BuildServiceProvider();
+            SelectItemValue.ServiceProvider = serviceCollection.BuildServiceProvider();
+        }); 
+ }
 ```
 
 
@@ -508,6 +582,47 @@ public class NotifyPropertyObject : INotifyPropertyChanged
         });
 ```
 
+选中事件
+
+```c#
+ private void datagrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
+ {
+     DataGrid dataGrid = sender as DataGrid;
+     if (dataGrid == null) return;
+     Person person = dataGrid.SelectedItem as Person;
+     if (person == null) return;
+     _text1.Text = person.Name;
+     _text2.Text = person.Age.ToString();
+     _text3.Text = person.Address;
+ }
+```
+
+
+
+### 控件对象数据绑定
+
+```xml
+<TextBlock x:Name="TXT" Text="5555"/>
+<Button x:Name="btn" Content="{Binding ElementName=TXT, Path=Text,Mode=OneWay}"></Button>
+```
+
+
+
+### 控件后台自动更新
+
+```xml
+<TextBox Text="{Binding UserName,UpdateSourceTrigger=PropertyChanged,Mode=TwoWay}"/>
+```
+
+ UpdateSourceTrigger的作用是：当做何种改变的时候通知数据源我们做了改变。该属性有如下表格的四种值，详细见下面表格的描述。
+
+| 枚举类型        | 效果                                   |
+| --------------- | -------------------------------------- |
+| Default         | 默认值（默认为LostFocuse）             |
+| Explicit        | 当应用程序调用 UpdateSource 方法时生效 |
+| LostFocus       | 失去焦点的时候触发                     |
+| PropertyChanged | 数据属性改变的时候触发                 |
+
 
 
 ### 页面加载绑定
@@ -583,11 +698,181 @@ public class PackToVisibilityConverter : IValueConverter
 
 
 
+## 布局控件
+
+### WrapPanel
+
+- 自动换行：当子控件无法在当前行放下时，它们会自动移到下一行。
+
+- 布局方向：可以设置为水平（Horizontal）或垂直（Vertical）排列。
+
+  | 类型                 | 描述                                       |
+  | -------------------- | ------------------------------------------ |
+  | Orientation          | 指定子内容的排列方向，默认是按水平方向排列 |
+  | Background           | 背景色                                     |
+  | Width/Height         | 宽度和高度                                 |
+  | ItemHeight/ItemWidth | WrapPanel 中所含全部项的高度/宽度          |
+
+```xml
+<WrapPanel ItemWidth="80" ItemHeight="50" Margin="10,10,10,10" Orientation="Vertical">
+    <Button Content="1" FontSize="25" Margin="5" HorizontalAlignment="Right"/>
+    <Button Content="2" FontSize="25" Margin="5"/>
+    <Button Content="3" FontSize="25" Margin="5"/>
+    <Button Content="4" FontSize="25" Margin="5"/>
+    <Button Content="5" FontSize="25" Margin="5"/>
+    <Button Content="6" FontSize="25" Margin="5"/>
+    <Button Content="7" FontSize="25" Margin="5"/>
+    <Button Content="8" FontSize="25" Margin="5"/>
+    <Button Content="8" FontSize="25" Margin="5"/>
+    <Button Content="8" FontSize="25" Margin="5"/>
+    <Button Content="8" FontSize="25" Margin="5"/>
+    <Button Content="8" FontSize="25" Margin="5"/>
+</WrapPanel>
+```
 
 
 
+### UniformGrid
+
+UniformGird中同一行中，列等宽，同一列中，行等高。常用属性为：
+
+Margin：获取或设置元素的外边距。
+Name：元素的标识名称；
+Opacity：透明度
+Width/Height：宽度和高度；
+Visibility：该元素可见性；
+Rows：获取或设置网格中的行数；
+Columns：获取或设置网格中的列数；
+FirstColumn    获取或设置网格第一行中前导空白单元格的数量，必须小于属性的值 Columns；
+
+```xml
+<UniformGrid FirstColumn="1" Columns="4" Margin="5">
+    <Button Content="按钮1" Margin="2"></Button>
+    <Button Content="按钮2" Margin="2"></Button>
+    <Button Content="按钮3" Margin="2"></Button>
+    <Button Content="按钮4" Margin="2"></Button>
+    <Button Content="按钮5" Margin="2"></Button>
+    <Button Content="按钮6" Margin="2"></Button>
+</UniformGrid>
+```
 
 
+
+### ItemsControl
+
+**ItemsControl条目控件，用于显示数据项集合，它允许按照自定义方式呈现任何类型的对象**，可以在其中使用不同的布局和面板来展示数据。
+
+ItemsControl的常用知识点如下：
+
+ItemTemplate，是DataTemplate类型，可以通过ItemTemplate设置条目项的呈现方式。
+ItemsPanel，是ItemsPanelTemplate类型，可以通过ItemsPanel设置容器中各个条目项的布局方式。
+ItemsSource，可以通过绑定数据源为ItemsControl设置内容。
+Items，条目列表，如果设置了ItemsSource，则此属性不生效。
+
+```xml
+<ItemsControl ItemsSource="{Binding Customers}">
+    <ItemsControl.ItemTemplate>
+        <DataTemplate>
+            <TextBlock Text="{Binding Name}" />
+        </DataTemplate>
+    </ItemsControl.ItemTemplate>
+    <ItemsControl.ItemsPanel>
+        <ItemsPanelTemplate>
+            <StackPanel />
+        </ItemsPanelTemplate>
+    </ItemsControl.ItemsPanel>
+</ItemsControl>
+```
+
+```xml
+<ScrollViewer VerticalScrollBarVisibility="Auto">
+    <ItemsControl ItemsSource="{Binding ImageItems}" Background="#eeeeee">
+        <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+                <UniformGrid Columns="5"></UniformGrid>
+            </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+            <DataTemplate>
+                <StackPanel Orientation="Vertical" Margin="3">
+                    <Image Source="{Binding ImagePath}" Stretch="Uniform"></Image>
+                    <TextBlock Text="{Binding ImageName}"></TextBlock>
+                </StackPanel>
+            </DataTemplate>
+        </ItemsControl.ItemTemplate>
+    </ItemsControl>
+</ScrollViewer>
+```
+
+
+
+### Popup弹出框
+
+Popup 控件提供一种在单独窗口中显示内容的方法，该窗口相对于指定元素或屏幕坐标在当前应用程序窗口上浮动。  Popup控件通过IsOpen属性控制是否可见。 当可见时，IsOpen 属性设置为 true，否则为 false。
+
+IsOpen：布尔值,指示 Popup 控件是否显示
+StaysOpen：布尔值,指示在 Popup 控件失去焦点的时候,是否关闭 Popup 控件的显示
+PopupAnimation：指示显示窗口时是否使用动画,只有在 AllowsTransparency 等于true时此属性才有用
+Popup： 窗口本身是一个不可见的元素,只有在窗口上放置了信息后才能显示
+Popup的定位方式与一般控件的定位方法不一样, Popup 使用五个属性来设定位置信息:
+PlacementTarget：设定 Popup 定义所相对的控件,如果没有为属性为 NULL,则 Popup 定位相对于屏幕的左上角
+Placement：一个枚举值,指定 Popup 控件的定位方式
+PlacementRectangle：设定一个矩形,在 Popup 控件显示时,位置将相对于此矩形来显示,此矩形的位置也相对于PlacementTarget 属性所设定的控件
+HorizontalOffset：指定一个值,指示 Popup 的位置所需水平移动多少个象素
+VerticalOffset：指定一个值,指示 Popup 的位置所需垂直移动多少个象素
+
+```xml
+
+<CheckBox x:Name="myCheckBox"></CheckBox>
+<Popup Grid.Column="0" IsOpen="{Binding ElementName=myCheckBox,Path=IsChecked}" PlacementTarget="{Binding ElementName=myCheckBox}" AllowsTransparency="True" PopupAnimation="Slide"  StaysOpen="False">
+	<Canvas Width="100" Height="100" Background="DarkBlue">
+		<TextBlock TextWrapping="Wrap" Foreground="White" Text="旋转Popup" ></TextBlock>
+	</Canvas>
+</Popup>
+```
+
+
+
+### Polygon多边形
+
+Points：定义多边形各个顶点的坐标。每个坐标使用空格或逗号分隔，多个坐标之间使用空格分隔。
+
+Fill：定义多边形的填充颜色。可以使用颜色名称、十六进制值或RGB值来指定颜色。
+
+Stroke：定义多边形的边界颜色。
+
+StrokeThickness：定义多边形的边界宽度。
+
+```xml
+<Polygon Points="5,5 200,5 5,300 200,300" StrokeThickness="20" Margin="20">
+    <Polygon.Stroke>
+        <LinearGradientBrush>
+            <GradientStop Color="DodgerBlue" Offset="1"/>
+            <GradientStop Color="GreenYellow" Offset="0.5"/>
+            <GradientStop Color="MediumSeaGreen" Offset="0"/>
+        </LinearGradientBrush>
+    </Polygon.Stroke>
+</Polygon>
+```
+
+动画
+
+```xml
+<Polygon Name="myPolygon" VerticalAlignment="Center" Points="0,0 100,0 100,50 0,100" Fill="GreenYellow" Stroke="Black">
+    <Polygon.Triggers>
+        <EventTrigger RoutedEvent="Loaded">
+            <BeginStoryboard>
+                <Storyboard>
+                    <DoubleAnimation From="0" To="200" Duration="0:0:2" Storyboard.TargetName="myPolygon" Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)"/>
+                </Storyboard>
+            </BeginStoryboard>
+        </EventTrigger>
+    </Polygon.Triggers>
+    <Polygon.RenderTransform>
+        <TranslateTransform X="0" Y="0"/>
+    </Polygon.RenderTransform>
+</Polygon>
+```
 
 
 
